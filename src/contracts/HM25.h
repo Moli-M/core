@@ -63,8 +63,8 @@ private:
     _
 
     PUBLIC_PROCEDURE(SetToken)        
-        state.token.name = input.name;
-        state.token.symbol = input.symbol;
+        copyMemory(&state.token.name, &input.name, sizeof(uint64));
+        copyMemory(&state.token.symbol, &input.symbol, sizeof(uint64));
         state.token.totalSupply = input.totalSupply;
     _
 
