@@ -63,9 +63,18 @@ private:
     _
 
     PUBLIC_PROCEDURE(SetToken)        
-        copyMemory(&state.token.name, &input.name, sizeof(uint64));
-        copyMemory(&state.token.symbol, &input.symbol, sizeof(uint64));
-        state.token.totalSupply = input.totalSupply;
+        Token tempToken;
+        // Copiar cada carácter de input.name a tempToken.name
+        for (int i = 0; i < 20; i++) {
+            tempToken.name[i] = input.name[i];
+        }
+        // Copiar cada carácter de input.symbol a tempToken.symbol
+        for (int i = 0; i < 10; i++) {
+            tempToken.symbol[i] = input.symbol[i];
+        }
+        tempToken.totalSupply = input.totalSupply;
+
+        state.token = tempToken;
     _
 
     PUBLIC_FUNCTION(GetStats)
