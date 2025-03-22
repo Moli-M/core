@@ -1,72 +1,66 @@
 using namespace QPI;
 
-struct QRC20Token : public ContractBase
+struct HM252
+{
+};
+
+struct HM25 : public ContractBase
 {
 public:
-    struct Transfer_input
-    {
-        address to;
-        uint64 amount;
-    };
-    struct Transfer_output {};
+    struct Echo_input{};
+    struct Echo_output{};
 
-    struct BalanceOf_input
-    {
-        address account;
-    };
-    struct BalanceOf_output
-    {
-        uint64 balance;
-    };
+    struct Burn_input{};
+    struct Burn_output{};
 
-    struct GetMeta_input {};
-    struct GetMeta_output
+    struct GetStats_input {};
+    struct GetStats_output
     {
-        string name;
-        string symbol;
-        uint64 decimals;
-        uint64 totalSupply;
+        uint64 numberOfEchoCalls;
+        uint64 numberOfBurnCalls;
     };
 
 private:
-    // State
-    mapping<address, uint64> balances;
-    string name = "QubicToken";
-    string symbol = "QTK";
-    uint64 decimals = 6;
-    uint64 totalSupply = 1'000'000'000; // 1 million tokens, 6 decimals
+    uint64 numberOfEchoCalls;
+    uint64 numberOfBurnCalls;
 
-    PUBLIC_PROCEDURE(Transfer)
-        if (state.balances[qpi.invocator()] < input.amount)
+    /**
+    Send back the invocation amount
+    */
+    PUBLIC_PROCEDURE(Echo)
+        state.numberOfEchoCalls++;
+        if (qpi.invocationReward() > 0)
         {
-            qpi.panic("Insufficient balance");
+            qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-
-        state.balances[qpi.invocator()] -= input.amount;
-        state.balances[input.to] += input.amount;
     _
 
-    PUBLIC_FUNCTION(BalanceOf)
-        output.balance = state.balances[input.account];
+    /**
+    * Burn all invocation amount
+    */
+    PUBLIC_PROCEDURE(Burn)
+        state.numberOfBurnCalls++;
+        if (qpi.invocationReward() > 0)
+        {
+            qpi.burn(qpi.invocationReward());
+        }
     _
 
-    PUBLIC_FUNCTION(GetMeta)
-        output.name = state.name;
-        output.symbol = state.symbol;
-        output.decimals = state.decimals;
-        output.totalSupply = state.totalSupply;
+    PUBLIC_FUNCTION(GetStats)
+        output.numberOfBurnCalls = state.numberOfBurnCalls;
+        output.numberOfEchoCalls = state.numberOfEchoCalls;
     _
 
     REGISTER_USER_FUNCTIONS_AND_PROCEDURES
 
-        REGISTER_USER_PROCEDURE(Transfer, 1);
+        REGISTER_USER_PROCEDURE(Echo, 1);
+        REGISTER_USER_PROCEDURE(Burn, 2);
 
-        REGISTER_USER_FUNCTION(BalanceOf, 1);
-        REGISTER_USER_FUNCTION(GetMeta, 2);
+        REGISTER_USER_FUNCTION(GetStats, 1);
     _
 
     INITIALIZE
-        // Assign total supply to creator
-        state.balances[qpi.invocator()] = state.totalSupply;
+        state.numberOfEchoCalls = 0;
+        state.numberOfBurnCalls = 0;
     _
 };
