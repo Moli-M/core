@@ -17,7 +17,7 @@ public:
     {
         char name[20];
         char symbol[10];
-        uint64_t totalSupply;
+        uint64 totalSupply;
     };
     struct SetToken_output{};
 
@@ -35,7 +35,7 @@ private:
     struct Token {
         char name[20];
         char symbol[10];
-        uint64_t totalSupply;
+        uint64 totalSupply;
     };
 
     Token token;
@@ -63,11 +63,9 @@ private:
     _
 
     PUBLIC_PROCEDURE(SetToken)        
-        token.name = input.name;
-        token.symbol = input.symbol;
-        token.totalSupply = input.totalSupply;
-
-        state.token = token;
+        state.token.name = input.name;
+        state.token.symbol = input.symbol;
+        state.token.totalSupply = input.totalSupply;
     _
 
     PUBLIC_FUNCTION(GetStats)
