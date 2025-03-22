@@ -13,6 +13,14 @@ public:
     struct Burn_input{};
     struct Burn_output{};
 
+    struct SetToken_input
+    {
+        char name[20];
+        char symbol[10];
+        uint64_t totalSupply;
+    };
+    struct SetToken_output{};
+
     struct GetStats_input {};
     struct GetStats_output
     {
@@ -23,6 +31,14 @@ public:
 private:
     uint64 numberOfEchoCalls;
     uint64 numberOfBurnCalls;
+
+    struct Token {
+        char name[20];
+        char symbol[10];
+        uint64_t totalSupply;
+    };
+
+    Token token;
 
     /**
     Send back the invocation amount
@@ -46,6 +62,14 @@ private:
         }
     _
 
+    PUBLIC_PROCEDURE(SetToken)        
+        token.name = input.name;
+        token.symbol = input.symbol;
+        token.totalSupply = input.totalSupply;
+
+        state.token = token;
+    _
+
     PUBLIC_FUNCTION(GetStats)
         output.numberOfBurnCalls = state.numberOfBurnCalls;
         output.numberOfEchoCalls = state.numberOfEchoCalls;
@@ -55,6 +79,7 @@ private:
 
         REGISTER_USER_PROCEDURE(Echo, 1);
         REGISTER_USER_PROCEDURE(Burn, 2);
+        REGISTER_USER_PROCEDURE(SetToken, 3);
 
         REGISTER_USER_FUNCTION(GetStats, 1);
     _
