@@ -21,6 +21,14 @@ public:
     };
     struct SetToken_output{};
 
+    struct GetToken_input{};
+    struct GetToken_output
+    {
+        // char name[20];
+        // char symbol[10];
+        uint64 totalSupply;
+    };
+
     struct GetStats_input {};
     struct GetStats_output
     {
