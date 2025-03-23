@@ -123,6 +123,12 @@ private:
         int index;
     };
     
+    struct AddBalanceEntry_input {
+        id account;
+        uint64 amount;
+    };
+    struct AddBalanceEntry_output {};
+    
     PRIVATE_PROCEDURE(FindBalanceIndex)
         const id& account = input.account;
         for (int i = 0; i < (int)state.numHolders; i++) {
@@ -133,12 +139,6 @@ private:
         }
         output.index = -1;
     _
-
-    struct AddBalanceEntry_input {
-        id account;
-        uint64 amount;
-    };
-    struct AddBalanceEntry_output {};
     
     PRIVATE_PROCEDURE(AddBalanceEntry)
         const id& account = input.account;
@@ -283,6 +283,8 @@ private:
             AddBalanceEntry_output addOutput;
             state.AddBalanceEntry(addInput, addOutput);
         }
+    _
+
     PUBLIC_FUNCTION(GetToken)
         for (int i = 0; i < 20; i++) {
             output.name[i] = state.token.name[i];
@@ -317,7 +319,7 @@ private:
         if (senderEntry.balance < input.amount) {
             qpi.transfer(sender, qpi.invocationReward());
         }
-        _
+    _
     // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
         id sender = qpi.invocator();
@@ -364,12 +366,25 @@ private:
             AddBalanceEntry_output addOutput;
             state.AddBalanceEntry(addInput, addOutput);
         }
-        REGISTER_USER_FUNCTION(BalanceOf, 3);
+    _
 
-        // Funciones DAO
-        REGISTER_USER_PROCEDURE(CreateProposal, 5);
-        REGISTER_USER_PROCEDURE(VoteProposal, 6);
-        REGISTER_USER_PROCEDURE(ExecuteProposal, 7);
+    REGISTER_CONTRACT_FUNCTIONS_AND_PROCEDURES
+
+    // --- Funciones auxiliares que usan state ---
+        PRIVATE_PROCEDURE(FindBalanceIndex, 1)
+        PRIVATE_PROCEDURE(AddBalanceEntry, 2)
+        PUBLIC_PROCEDURE(CreateProposal, 3)
+        PUBLIC_PROCEDURE(VoteProposal, 4)
+        PUBLIC_PROCEDURE(ExecuteProposal, 5)
+        PUBLIC_PROCEDURE(Echo, 6)
+        PUBLIC_PROCEDURE(Burn, 7)
+        PUBLIC_PROCEDURE(SetToken, 8)
+
+
+        PUBLIC_FUNCTION(GetToken, 1)
+        PUBLIC_FUNCTION(GetStats, 2)
+        PUBLIC_FUNCTION(BalanceOf, 3)
+        PUBLIC_PROCEDURE(Transfer, 4)
     _
 
     INITIALIZE
