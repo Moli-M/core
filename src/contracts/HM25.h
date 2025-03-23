@@ -389,17 +389,17 @@ private:
         REGISTER_USER_PROCEDURE(SetToken, 8);
     _
 
-    INITIALIZE
-        state.numberOfEchoCalls = 0;
-        state.numberOfBurnCalls = 0;
-        state.token.totalSupply = 25;
-        for (int i = 0; i < 20; i++) {
-            state.token.name[i] = 0;
-        }
-        for (int i = 0; i < 10; i++) {
-            state.token.symbol[i] = 0;
-        }
-        state.numHolders = 0;
-        state.numProposals = 0;
-    _
+    // INITIALIZE
+    //     state.numberOfEchoCalls = 0;
+    //     state.numberOfBurnCalls = 0;
+    //     state.token.totalSupply = 25;
+    //     for (int i = 0; i < 20; i++) {
+    //         state.token.name[i] = 0;
+    //     }
+    //     for (int i = 0; i < 10; i++) {
+    //         state.token.symbol[i] = 0;
+    //     }
+    //     state.numHolders = 0;
+    //     state.numProposals = 0;
+    // _
 };
