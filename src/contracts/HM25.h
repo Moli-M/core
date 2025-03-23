@@ -7,7 +7,7 @@ struct HM252
 struct HM25 : public ContractBase
 {
 public:
-    // --- Funciones básicas del contrato (ERC20 y estadísticas) ---
+    // --- Funciones básicas (ERC20 y estadísticas) ---
     struct Echo_input {};
     struct Echo_output {};
 
@@ -37,7 +37,7 @@ public:
         uint64 numberOfBurnCalls;
     };
 
-    // ERC20: Consulta de saldo
+    // ERC20: BalanceOf
     struct BalanceOf_input
     {
         id account;
@@ -47,7 +47,7 @@ public:
         uint64 balance;
     };
 
-    // ERC20: Transferencia
+    // ERC20: Transfer
     struct Transfer_input
     {
         id to;
@@ -55,23 +55,20 @@ public:
     };
     struct Transfer_output {};
 
-    // --- Funciones de DAO ---
-    // Crear una propuesta (por ejemplo, para cambios o decisiones de la DAO)
+    // --- Funciones DAO ---
     struct CreateProposal_input
     {
         char description[64];
     };
     struct CreateProposal_output {};
 
-    // Votar sobre una propuesta
     struct VoteProposal_input
     {
         uint64 proposalId;
-        bool voteFor; // true = a favor, false = en contra
+        bool voteFor;
     };
     struct VoteProposal_output {};
 
-    // Ejecutar la propuesta (simplemente la marca como ejecutada si "a favor" > "en contra")
     struct ExecuteProposal_input
     {
         uint64 proposalId;
@@ -79,7 +76,7 @@ public:
     struct ExecuteProposal_output {};
 
 private:
-    // Estadísticas del contrato
+    // Variables de estadísticas
     uint64 numberOfEchoCalls;
     uint64 numberOfBurnCalls;
 
@@ -91,7 +88,7 @@ private:
     };
     Token token;
 
-    // Mapeo simulado para balances (address => balance) usando un array
+    // Simulamos un mapping (address => balance) usando un array
     static const uint64 MAX_HOLDERS = 1024;
     struct BalanceEntry {
         id holder;
@@ -100,40 +97,15 @@ private:
     Array<BalanceEntry, MAX_HOLDERS> balances;
     uint64 numHolders;
 
-    // Función auxiliar: busca el índice de una cuenta en el array de balances
-    int findBalanceIndex(const id &account)
-    {
-        for (int i = 0; i < (int)numHolders; i++) {
-            if (balances.get(i).holder == account) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    // Función auxiliar: agrega una nueva entrada para un holder
-    void addBalanceEntry(const id &account, uint64 amount)
-    {
-        if (numHolders < MAX_HOLDERS) {
-            BalanceEntry entry;
-            entry.holder = account;
-            entry.balance = amount;
-            balances.set(numHolders, entry);
-            numHolders++;
-        }
-        // Si se excede MAX_HOLDERS, se debería gestionar el error
-    }
-
-    // --- DAO: estructuras internas ---
+    // Estructuras para la DAO
     struct VoteRecord {
         id voter;
-        uint64 weight; // se toma el balance del votante en el momento de votar
+        uint64 weight;
         bool voteFor;
     };
 
     static const uint64 MAX_PROPOSALS = 128;
-    static const uint64 MAX_VOTES_PER_PROPOSAL = MAX_HOLDERS; // en el peor caso
-
+    static const uint64 MAX_VOTES_PER_PROPOSAL = MAX_HOLDERS;
     struct Proposal {
         uint64 proposalId;
         char description[64];
@@ -143,21 +115,42 @@ private:
         Array<VoteRecord, MAX_VOTES_PER_PROPOSAL> voteRecords;
         uint64 numVotes;
     };
-
     Array<Proposal, MAX_PROPOSALS> proposals;
     uint64 numProposals;
 
+    // --- Funciones auxiliares que usan state ---
+    int findBalanceIndex(const id &account)
+    {
+        for (int i = 0; i < (int)state.numHolders; i++) {
+            if (state.balances.get(i).holder == account) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    void addBalanceEntry(const id &account, uint64 amount)
+    {
+        if (state.numHolders < MAX_HOLDERS) {
+            BalanceEntry entry;
+            entry.holder = account;
+            entry.balance = amount;
+            state.balances.set(state.numHolders, entry);
+            state.numHolders++;
+        }
+        // Si se excede MAX_HOLDERS, se debería gestionar el error.
+    }
+
     // --- Funciones DAO internas ---
+
     // Crea una nueva propuesta
     PUBLIC_PROCEDURE(CreateProposal)
-        if (numProposals >= MAX_PROPOSALS) {
-            // En caso de exceder el número máximo, se retorna sin crear
+        if (state.numProposals >= MAX_PROPOSALS) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
         Proposal newProp;
-        newProp.proposalId = numProposals;
-        // Copiar la descripción
+        newProp.proposalId = state.numProposals;
         for (int i = 0; i < 64; i++) {
             newProp.description[i] = input.description[i];
         }
@@ -165,79 +158,68 @@ private:
         newProp.votesAgainst = 0;
         newProp.executed = false;
         newProp.numVotes = 0;
-        proposals.set(numProposals, newProp);
-        numProposals++;
+        state.proposals.set(state.numProposals, newProp);
+        state.numProposals++;
     _
 
-    // Permite a un holder votar sobre una propuesta; se usa su balance actual como peso
+    // Vota sobre una propuesta
     PUBLIC_PROCEDURE(VoteProposal)
-        if (input.proposalId >= numProposals) {
+        if (input.proposalId >= state.numProposals) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
-        Proposal prop = proposals.get(input.proposalId);
+        Proposal prop = state.proposals.get(input.proposalId);
         if (prop.executed) {
-            // No se pueden votar propuestas ya ejecutadas
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
-        // Verificar si el votante ya ha votado en esta propuesta
         for (int i = 0; i < (int)prop.numVotes; i++) {
             if (prop.voteRecords.get(i).voter == qpi.invocator()) {
-                // Ya votó, no permitir votar de nuevo
                 qpi.transfer(qpi.invocator(), qpi.invocationReward());
                 return;
             }
         }
-        // Obtener el peso (balance) del votante
         int idx = findBalanceIndex(qpi.invocator());
-        uint64 weight = (idx >= 0) ? balances.get(idx).balance : 0;
-        // Si no tiene tokens, no puede votar
+        uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
-        // Crear el registro de voto
         VoteRecord vote;
         vote.voter = qpi.invocator();
         vote.weight = weight;
         vote.voteFor = input.voteFor;
-        // Agregarlo a la propuesta
         if (prop.numVotes < MAX_VOTES_PER_PROPOSAL) {
             prop.voteRecords.set(prop.numVotes, vote);
             prop.numVotes++;
         }
-        // Acumular votos según el voto
         if (input.voteFor) {
             prop.votesFor += weight;
         } else {
             prop.votesAgainst += weight;
         }
-        proposals.set(input.proposalId, prop);
+        state.proposals.set(input.proposalId, prop);
     _
 
-    // Ejecuta la propuesta: si votos a favor superan a los en contra, se marca como ejecutada
+    // Ejecuta una propuesta
     PUBLIC_PROCEDURE(ExecuteProposal)
-        if (input.proposalId >= numProposals) {
+        if (input.proposalId >= state.numProposals) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
-        Proposal prop = proposals.get(input.proposalId);
+        Proposal prop = state.proposals.get(input.proposalId);
         if (prop.executed) {
-            // Ya fue ejecutada
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
-        // Se decide la propuesta si los votos a favor superan a los en contra
         if (prop.votesFor > prop.votesAgainst) {
-            // Se podría incluir lógica para ejecutar alguna acción de la DAO.
-            // Por ahora, simplemente marcamos la propuesta como ejecutada.
             prop.executed = true;
         }
-        proposals.set(input.proposalId, prop);
+        state.proposals.set(input.proposalId, prop);
     _
 
     // --- Funciones ERC20 y estadísticas ---
+
     PUBLIC_PROCEDURE(Echo)
         state.numberOfEchoCalls++;
         if (qpi.invocationReward() > 0)
@@ -266,12 +248,11 @@ private:
         tempToken.totalSupply = input.totalSupply;
         state.token = tempToken;
 
-        // Asigna el totalSupply al creador en el "mapping" de balances
         int index = findBalanceIndex(qpi.invocator());
         if (index >= 0) {
-            BalanceEntry entry = balances.get(index);
+            BalanceEntry entry = state.balances.get(index);
             entry.balance = input.totalSupply;
-            balances.set(index, entry);
+            state.balances.set(index, entry);
         } else {
             addBalanceEntry(qpi.invocator(), input.totalSupply);
         }
@@ -296,7 +277,7 @@ private:
     PUBLIC_FUNCTION(BalanceOf)
         int index = findBalanceIndex(input.account);
         if (index >= 0) {
-            BalanceEntry entry = balances.get(index);
+            BalanceEntry entry = state.balances.get(index);
             output.balance = entry.balance;
         } else {
             output.balance = 0;
@@ -311,26 +292,26 @@ private:
             qpi.transfer(sender, qpi.invocationReward());
             return;
         }
-        BalanceEntry senderEntry = balances.get(senderIndex);
+        BalanceEntry senderEntry = state.balances.get(senderIndex);
         if (senderEntry.balance < input.amount) {
             qpi.transfer(sender, qpi.invocationReward());
             return;
         }
         senderEntry.balance -= input.amount;
-        balances.set(senderIndex, senderEntry);
+        state.balances.set(senderIndex, senderEntry);
 
         int recipientIndex = findBalanceIndex(input.to);
         if (recipientIndex >= 0) {
-            BalanceEntry recipientEntry = balances.get(recipientIndex);
+            BalanceEntry recipientEntry = state.balances.get(recipientIndex);
             recipientEntry.balance += input.amount;
-            balances.set(recipientIndex, recipientEntry);
+            state.balances.set(recipientIndex, recipientEntry);
         } else {
             addBalanceEntry(input.to, input.amount);
         }
     _
 
     REGISTER_USER_FUNCTIONS_AND_PROCEDURES
-        // Funciones/procedimientos ERC20 y estadísticas
+        // ERC20 y estadísticas
         REGISTER_USER_PROCEDURE(Echo, 1);
         REGISTER_USER_PROCEDURE(Burn, 2);
         REGISTER_USER_PROCEDURE(SetToken, 3);
@@ -340,7 +321,7 @@ private:
         REGISTER_USER_FUNCTION(GetToken, 2);
         REGISTER_USER_FUNCTION(BalanceOf, 3);
 
-        // Funciones/procedimientos DAO
+        // Funciones DAO
         REGISTER_USER_PROCEDURE(CreateProposal, 5);
         REGISTER_USER_PROCEDURE(VoteProposal, 6);
         REGISTER_USER_PROCEDURE(ExecuteProposal, 7);
@@ -349,7 +330,6 @@ private:
     INITIALIZE
         state.numberOfEchoCalls = 0;
         state.numberOfBurnCalls = 0;
-        // Inicialización por defecto del token: totalSupply en 25, nombre y símbolo vacíos.
         state.token.totalSupply = 25;
         for (int i = 0; i < 20; i++) {
             state.token.name[i] = 0;
@@ -357,7 +337,7 @@ private:
         for (int i = 0; i < 10; i++) {
             state.token.symbol[i] = 0;
         }
-        numHolders = 0;
-        numProposals = 0;
+        state.numHolders = 0;
+        state.numProposals = 0;
     _
 };
