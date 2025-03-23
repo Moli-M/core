@@ -118,32 +118,43 @@ private:
     Array<Proposal, MAX_PROPOSALS> proposals;
     uint64 numProposals;
 
-    // --- Funciones auxiliares que usan state ---
-    int findBalanceIndex(const id &account)
-    {
+    // --- Helper functions que usan state ---
+    // Declaramos findBalanceIndex como función privada:
+    struct FindBalanceIndex_input {
+        id account;
+    };
+    struct FindBalanceIndex_output {
+        int index;
+    };
+    PRIVATE_FUNCTION_WITH_LOCALS(findBalanceIndex)
+        output.index = -1;
         for (int i = 0; i < (int)state.numHolders; i++) {
-            if (state.balances.get(i).holder == account) {
-                return i;
+            if (state.balances.get(i).holder == input.account) {
+                output.index = i;
+                break;
             }
         }
-        return -1;
-    }
+    _
 
-    void addBalanceEntry(const id &account, uint64 amount)
-    {
+    // Declaramos addBalanceEntry como procedimiento privado:
+    struct AddBalanceEntry_input {
+        id account;
+        uint64 amount;
+    };
+    struct AddBalanceEntry_output {
+        // sin salida
+    };
+    PRIVATE_PROCEDURE_WITH_LOCALS(addBalanceEntry)
         if (state.numHolders < MAX_HOLDERS) {
             BalanceEntry entry;
-            entry.holder = account;
-            entry.balance = amount;
+            entry.holder = input.account;
+            entry.balance = input.amount;
             state.balances.set(state.numHolders, entry);
             state.numHolders++;
         }
-        // Si se excede MAX_HOLDERS, se debería gestionar el error.
-    }
+    _
 
     // --- Funciones DAO internas ---
-
-    // Crea una nueva propuesta
     PUBLIC_PROCEDURE(CreateProposal)
         if (state.numProposals >= MAX_PROPOSALS) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -162,7 +173,6 @@ private:
         state.numProposals++;
     _
 
-    // Vota sobre una propuesta
     PUBLIC_PROCEDURE(VoteProposal)
         if (input.proposalId >= state.numProposals) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -179,29 +189,34 @@ private:
                 return;
             }
         }
-        int idx = findBalanceIndex(qpi.invocator());
-        uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
-        if (weight == 0) {
-            qpi.transfer(qpi.invocator(), qpi.invocationReward());
-            return;
+        {
+            // Usamos la función findBalanceIndex para obtener el peso (balance) del votante.
+            FindBalanceIndex_input fbInput;
+            fbInput.account = qpi.invocator();
+            FindBalanceIndex_output fbOutput;
+            findBalanceIndex(qpi, state, fbInput, fbOutput, locals);
+            uint64 weight = (fbOutput.index >= 0) ? state.balances.get(fbOutput.index).balance : 0;
+            if (weight == 0) {
+                qpi.transfer(qpi.invocator(), qpi.invocationReward());
+                return;
+            }
+            VoteRecord vote;
+            vote.voter = qpi.invocator();
+            vote.weight = weight;
+            vote.voteFor = input.voteFor;
+            if (prop.numVotes < MAX_VOTES_PER_PROPOSAL) {
+                prop.voteRecords.set(prop.numVotes, vote);
+                prop.numVotes++;
+            }
+            if (input.voteFor) {
+                prop.votesFor += weight;
+            } else {
+                prop.votesAgainst += weight;
+            }
+            state.proposals.set(input.proposalId, prop);
         }
-        VoteRecord vote;
-        vote.voter = qpi.invocator();
-        vote.weight = weight;
-        vote.voteFor = input.voteFor;
-        if (prop.numVotes < MAX_VOTES_PER_PROPOSAL) {
-            prop.voteRecords.set(prop.numVotes, vote);
-            prop.numVotes++;
-        }
-        if (input.voteFor) {
-            prop.votesFor += weight;
-        } else {
-            prop.votesAgainst += weight;
-        }
-        state.proposals.set(input.proposalId, prop);
     _
 
-    // Ejecuta una propuesta
     PUBLIC_PROCEDURE(ExecuteProposal)
         if (input.proposalId >= state.numProposals) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -219,7 +234,6 @@ private:
     _
 
     // --- Funciones ERC20 y estadísticas ---
-
     PUBLIC_PROCEDURE(Echo)
         state.numberOfEchoCalls++;
         if (qpi.invocationReward() > 0)
@@ -236,7 +250,6 @@ private:
         }
     _
 
-    // Establece el token y asigna el totalSupply al creador
     PUBLIC_PROCEDURE(SetToken)
         Token tempToken;
         for (int i = 0; i < 20; i++) {
@@ -246,26 +259,36 @@ private:
             tempToken.symbol[i] = input.symbol[i];
         }
         tempToken.totalSupply = input.totalSupply;
-        state.token = tempToken;
+        token = tempToken;
 
-        int index = findBalanceIndex(qpi.invocator());
-        if (index >= 0) {
-            BalanceEntry entry = state.balances.get(index);
-            entry.balance = input.totalSupply;
-            state.balances.set(index, entry);
-        } else {
-            addBalanceEntry(qpi.invocator(), input.totalSupply);
+        {
+            // Usamos findBalanceIndex para ver si ya existe saldo para el creador.
+            FindBalanceIndex_input fbInput;
+            fbInput.account = qpi.invocator();
+            FindBalanceIndex_output fbOutput;
+            findBalanceIndex(qpi, state, fbInput, fbOutput, locals);
+            if (fbOutput.index >= 0) {
+                BalanceEntry entry = state.balances.get(fbOutput.index);
+                entry.balance = input.totalSupply;
+                state.balances.set(fbOutput.index, entry);
+            } else {
+                AddBalanceEntry_input abInput;
+                abInput.account = qpi.invocator();
+                abInput.amount = input.totalSupply;
+                AddBalanceEntry_output abOutput;
+                addBalanceEntry(qpi, state, abInput, abOutput, locals);
+            }
         }
     _
 
     PUBLIC_FUNCTION(GetToken)
         for (int i = 0; i < 20; i++) {
-            output.name[i] = state.token.name[i];
+            output.name[i] = token.name[i];
         }
         for (int i = 0; i < 10; i++) {
-            output.symbol[i] = state.token.symbol[i];
+            output.symbol[i] = token.symbol[i];
         }
-        output.totalSupply = state.token.totalSupply;
+        output.totalSupply = token.totalSupply;
     _
 
     PUBLIC_FUNCTION(GetStats)
@@ -273,40 +296,53 @@ private:
         output.numberOfBurnCalls = state.numberOfBurnCalls;
     _
 
-    // Consulta el balance de una cuenta
     PUBLIC_FUNCTION(BalanceOf)
-        int index = findBalanceIndex(input.account);
-        if (index >= 0) {
-            BalanceEntry entry = state.balances.get(index);
-            output.balance = entry.balance;
-        } else {
-            output.balance = 0;
+        {
+            FindBalanceIndex_input fbInput;
+            fbInput.account = input.account;
+            FindBalanceIndex_output fbOutput;
+            findBalanceIndex(qpi, state, fbInput, fbOutput, locals);
+            if (fbOutput.index >= 0) {
+                BalanceEntry entry = state.balances.get(fbOutput.index);
+                output.balance = entry.balance;
+            } else {
+                output.balance = 0;
+            }
         }
     _
 
-    // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
-        id sender = qpi.invocator();
-        int senderIndex = findBalanceIndex(sender);
-        if (senderIndex < 0) {
-            qpi.transfer(sender, qpi.invocationReward());
-            return;
-        }
-        BalanceEntry senderEntry = state.balances.get(senderIndex);
-        if (senderEntry.balance < input.amount) {
-            qpi.transfer(sender, qpi.invocationReward());
-            return;
-        }
-        senderEntry.balance -= input.amount;
-        state.balances.set(senderIndex, senderEntry);
+        {
+            id sender = qpi.invocator();
+            FindBalanceIndex_input fbInput;
+            fbInput.account = sender;
+            FindBalanceIndex_output fbOutput;
+            findBalanceIndex(qpi, state, fbInput, fbOutput, locals);
+            if (fbOutput.index < 0) {
+                qpi.transfer(sender, qpi.invocationReward());
+                return;
+            }
+            BalanceEntry senderEntry = state.balances.get(fbOutput.index);
+            if (senderEntry.balance < input.amount) {
+                qpi.transfer(sender, qpi.invocationReward());
+                return;
+            }
+            senderEntry.balance -= input.amount;
+            state.balances.set(fbOutput.index, senderEntry);
 
-        int recipientIndex = findBalanceIndex(input.to);
-        if (recipientIndex >= 0) {
-            BalanceEntry recipientEntry = state.balances.get(recipientIndex);
-            recipientEntry.balance += input.amount;
-            state.balances.set(recipientIndex, recipientEntry);
-        } else {
-            addBalanceEntry(input.to, input.amount);
+            fbInput.account = input.to;
+            findBalanceIndex(qpi, state, fbInput, fbOutput, locals);
+            if (fbOutput.index >= 0) {
+                BalanceEntry recipientEntry = state.balances.get(fbOutput.index);
+                recipientEntry.balance += input.amount;
+                state.balances.set(fbOutput.index, recipientEntry);
+            } else {
+                AddBalanceEntry_input abInput;
+                abInput.account = input.to;
+                abInput.amount = input.amount;
+                AddBalanceEntry_output abOutput;
+                addBalanceEntry(qpi, state, abInput, abOutput, locals);
+            }
         }
     _
 
@@ -330,12 +366,12 @@ private:
     INITIALIZE
         state.numberOfEchoCalls = 0;
         state.numberOfBurnCalls = 0;
-        state.token.totalSupply = 25;
+        token.totalSupply = 25;
         for (int i = 0; i < 20; i++) {
-            state.token.name[i] = 0;
+            token.name[i] = 0;
         }
         for (int i = 0; i < 10; i++) {
-            state.token.symbol[i] = 0;
+            token.symbol[i] = 0;
         }
         state.numHolders = 0;
         state.numProposals = 0;
