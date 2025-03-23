@@ -197,7 +197,7 @@ private:
         FindBalanceIndex_input findInput;
         findInput.account = qpi.invocator();
         FindBalanceIndex_output findOutput;
-        FindBalanceIndex(findInput, findOutput);
+        state.FindBalanceIndex(findInput, findOutput);
         int idx = findOutput.index;
         uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
@@ -257,59 +257,52 @@ private:
 
     // Establece el token y asigna el totalSupply al creador
     PUBLIC_PROCEDURE(SetToken)
-        Token tempToken;
+        // Copiar datos del token
         for (int i = 0; i < 20; i++) {
-            tempToken.name[i] = input.name[i];
+            state.token.name[i] = input.name[i];
         }
         for (int i = 0; i < 10; i++) {
-            tempToken.symbol[i] = input.symbol[i];
+            state.token.symbol[i] = input.symbol[i];
         }
+        state.token.totalSupply = input.totalSupply;
+        
+        // Buscar si el creador ya tiene un balance
         FindBalanceIndex_input findInput;
         findInput.account = qpi.invocator();
         FindBalanceIndex_output findOutput;
-        FindBalanceIndex(findInput, findOutput);
+        state.FindBalanceIndex(findInput, findOutput);
         int index = findOutput.index;
-        tempToken.totalSupply = input.totalSupply;
-            AddBalanceEntry_input addInput;
-            addInput.account = qpi.invocator();
-            addInput.amount = input.totalSupply;
-            AddBalanceEntry_output addOutput;
-            AddBalanceEntry(addInput, addOutput);
-
-        int index = findBalanceIndex(qpi.invocator());
+        
         if (index >= 0) {
+            // Si ya existe, actualizar el balance
             BalanceEntry entry = state.balances.get(index);
             entry.balance = input.totalSupply;
             state.balances.set(index, entry);
         } else {
-            addBalanceEntry(qpi.invocator(), input.totalSupply);
+            // Si no existe, crear nueva entrada
+            AddBalanceEntry_input addInput;
+            addInput.account = qpi.invocator();
+            addInput.amount = input.totalSupply;
+            AddBalanceEntry_output addOutput;
+            state.AddBalanceEntry(addInput, addOutput);
         }
-    _
-
     PUBLIC_FUNCTION(GetToken)
         for (int i = 0; i < 20; i++) {
             output.name[i] = state.token.name[i];
         }
         for (int i = 0; i < 10; i++) {
-        FindBalanceIndex_input findInput;
-        findInput.account = input.account;
-        FindBalanceIndex_output findOutput;
-        FindBalanceIndex(findInput, findOutput);
-        int index = findOutput.index;
+            output.symbol[i] = state.token.symbol[i];
+        }
+        output.totalSupply = state.token.totalSupply;
         }
         output.totalSupply = state.token.totalSupply;
     _
 
     PUBLIC_FUNCTION(GetStats)
         output.numberOfEchoCalls = state.numberOfEchoCalls;
+    PUBLIC_FUNCTION(GetStats)
+        output.numberOfEchoCalls = state.numberOfEchoCalls;
         output.numberOfBurnCalls = state.numberOfBurnCalls;
-        FindBalanceIndex_input findInput;
-        findInput.account = sender;
-        FindBalanceIndex_output findOutput;
-        FindBalanceIndex(findInput, findOutput);
-        int senderIndex = findOutput.index;
-    _
-
     // Consulta el balance de una cuenta
     PUBLIC_FUNCTION(BalanceOf)
         int index = findBalanceIndex(input.account);
@@ -317,54 +310,72 @@ private:
             BalanceEntry entry = state.balances.get(index);
             output.balance = entry.balance;
         } else {
-        FindBalanceIndex_input recipientFindInput;
-        recipientFindInput.account = input.to;
-        FindBalanceIndex_output recipientFindOutput;
-        FindBalanceIndex(recipientFindInput, recipientFindOutput);
-        int recipientIndex = recipientFindOutput.index;
+    // Consulta el balance de una cuenta
+    PUBLIC_FUNCTION(BalanceOf)
+        FindBalanceIndex_input findInput;
+        findInput.account = input.account;
+        FindBalanceIndex_output findOutput;
+        state.FindBalanceIndex(findInput, findOutput);
+        int index = findOutput.index;
+        
+        if (index >= 0) {
+            BalanceEntry entry = state.balances.get(index);
+            output.balance = entry.balance;
+        } else {
+            output.balance = 0;
         }
-            AddBalanceEntry_input addInput;
-            addInput.account = input.to;
-            addInput.amount = input.amount;
-            AddBalanceEntry_output addOutput;
-            AddBalanceEntry(addInput, addOutput);
-    _
-
-    // Realiza una transferencia de tokens
-    PUBLIC_PROCEDURE(Transfer)
-        id sender = qpi.invocator();
-        int senderIndex = findBalanceIndex(sender);
-        if (senderIndex < 0) {
             qpi.transfer(sender, qpi.invocationReward());
             return;
         }
         BalanceEntry senderEntry = state.balances.get(senderIndex);
         if (senderEntry.balance < input.amount) {
             qpi.transfer(sender, qpi.invocationReward());
+    // Realiza una transferencia de tokens
+    PUBLIC_PROCEDURE(Transfer)
+        id sender = qpi.invocator();
+        
+        // Buscar balance del remitente
+        FindBalanceIndex_input senderFindInput;
+        senderFindInput.account = sender;
+        FindBalanceIndex_output senderFindOutput;
+        state.FindBalanceIndex(senderFindInput, senderFindOutput);
+        int senderIndex = senderFindOutput.index;
+        
+        if (senderIndex < 0) {
+            qpi.transfer(sender, qpi.invocationReward());
             return;
         }
+        
+        BalanceEntry senderEntry = state.balances.get(senderIndex);
+        if (senderEntry.balance < input.amount) {
+            qpi.transfer(sender, qpi.invocationReward());
+            return;
+        }
+        
+        // Restar del remitente
         senderEntry.balance -= input.amount;
         state.balances.set(senderIndex, senderEntry);
 
-        int recipientIndex = findBalanceIndex(input.to);
+        // Buscar balance del destinatario
+        FindBalanceIndex_input recipientFindInput;
+        recipientFindInput.account = input.to;
+        FindBalanceIndex_output recipientFindOutput;
+        state.FindBalanceIndex(recipientFindInput, recipientFindOutput);
+        int recipientIndex = recipientFindOutput.index;
+        
         if (recipientIndex >= 0) {
+            // Si ya existe, sumar al balance
             BalanceEntry recipientEntry = state.balances.get(recipientIndex);
             recipientEntry.balance += input.amount;
             state.balances.set(recipientIndex, recipientEntry);
         } else {
-            addBalanceEntry(input.to, input.amount);
+            // Si no existe, crear nueva entrada
+            AddBalanceEntry_input addInput;
+            addInput.account = input.to;
+            addInput.amount = input.amount;
+            AddBalanceEntry_output addOutput;
+            state.AddBalanceEntry(addInput, addOutput);
         }
-    _
-
-    REGISTER_USER_FUNCTIONS_AND_PROCEDURES
-        // ERC20 y estadísticas
-        REGISTER_USER_PROCEDURE(Echo, 1);
-        REGISTER_USER_PROCEDURE(Burn, 2);
-        REGISTER_USER_PROCEDURE(SetToken, 3);
-        REGISTER_USER_PROCEDURE(Transfer, 4);
-
-        REGISTER_USER_FUNCTION(GetStats, 1);
-        REGISTER_USER_FUNCTION(GetToken, 2);
         REGISTER_USER_FUNCTION(BalanceOf, 3);
 
         // Funciones DAO
