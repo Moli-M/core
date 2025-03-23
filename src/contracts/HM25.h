@@ -119,18 +119,27 @@ private:
     uint64 numProposals;
 
     // --- Funciones auxiliares que usan state ---
-    int findBalanceIndex(const id &account)
-    {
+    PRIVATE_PROCEDURE(FindBalanceIndex)
+        const id& account = input.account;
         for (int i = 0; i < (int)state.numHolders; i++) {
             if (state.balances.get(i).holder == account) {
-                return i;
+                output.index = i;
+                return;
             }
         }
-        return -1;
-    }
+        output.index = -1;
+    _
 
-    void addBalanceEntry(const id &account, uint64 amount)
-    {
+    struct FindBalanceIndex_input {
+        id account;
+    };
+    struct FindBalanceIndex_output {
+        int index;
+    };
+
+    PRIVATE_PROCEDURE(AddBalanceEntry)
+        const id& account = input.account;
+        uint64 amount = input.amount;
         if (state.numHolders < MAX_HOLDERS) {
             BalanceEntry entry;
             entry.holder = account;
@@ -139,7 +148,13 @@ private:
             state.numHolders++;
         }
         // Si se excede MAX_HOLDERS, se debería gestionar el error.
-    }
+    _
+
+    struct AddBalanceEntry_input {
+        id account;
+        uint64 amount;
+    };
+    struct AddBalanceEntry_output {};
 
     // --- Funciones DAO internas ---
 
