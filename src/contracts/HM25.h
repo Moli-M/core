@@ -195,7 +195,7 @@ private:
                 return;
             }
         }
-        int idx = findOutput.index;
+        int idx = output.index;
         uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -263,7 +263,7 @@ private:
         }
         state.token.totalSupply = input.totalSupply;
 
-        int index = findOutput.index;
+        int index = output.index;
         
         if (index >= 0) {
             // Si ya existe, actualizar el balance
@@ -297,7 +297,7 @@ private:
 
     PUBLIC_FUNCTION(BalanceOf)
 
-        int index = findOutput.index;
+        int index = output.index;
         
         if (index >= 0) {
             BalanceEntry entry = state.balances.get(index);
@@ -368,7 +368,7 @@ private:
     _
 
     INITIALIZE
-        state.findOutput.index = 10;
+        output.index = 10;
 
         state.numberOfEchoCalls = 0;
         state.numberOfBurnCalls = 0;
