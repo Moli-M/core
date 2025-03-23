@@ -197,7 +197,7 @@ private:
         }
         FindBalanceIndex_input findInput;
         findInput.account = qpi.invocator();
-        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
+        state.FindBalanceIndex(findInput);
         int idx = findOutput.index;
         uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
@@ -269,7 +269,7 @@ private:
         // Buscar si el creador ya tiene un balance
         FindBalanceIndex_input findInput;
         findInput.account = qpi.invocator();
-        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
+        state.FindBalanceIndex(findInput);
 
         int index = findOutput.index;
         
@@ -306,7 +306,7 @@ private:
     PUBLIC_FUNCTION(BalanceOf)
         FindBalanceIndex_input findInput;
         findInput.account = input.account;
-        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
+        state.FindBalanceIndex(findInput);
 
         int index = findOutput.index;
         
