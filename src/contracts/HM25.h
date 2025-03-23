@@ -197,8 +197,7 @@ private:
         }
         FindBalanceIndex_input findInput;
         findInput.account = qpi.invocator();
-        FindBalanceIndex_output findOutput;
-        state.FindBalanceIndex(findInput, findOutput);
+        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
         int idx = findOutput.index;
         uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
@@ -270,8 +269,8 @@ private:
         // Buscar si el creador ya tiene un balance
         FindBalanceIndex_input findInput;
         findInput.account = qpi.invocator();
-        FindBalanceIndex_output findOutput;
-        state.FindBalanceIndex(findInput, findOutput);
+        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
+
         int index = findOutput.index;
         
         if (index >= 0) {
@@ -307,8 +306,8 @@ private:
     PUBLIC_FUNCTION(BalanceOf)
         FindBalanceIndex_input findInput;
         findInput.account = input.account;
-        FindBalanceIndex_output findOutput;
-        state.FindBalanceIndex(findInput, findOutput);
+        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
+
         int index = findOutput.index;
         
         if (index >= 0) {
@@ -332,8 +331,8 @@ private:
         // Buscar balance del remitente
         FindBalanceIndex_input senderFindInput;
         senderFindInput.account = sender;
-        FindBalanceIndex_output senderFindOutput;
-        state.FindBalanceIndex(senderFindInput, senderFindOutput);
+        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
+
         int senderIndex = senderFindOutput.index;
         
         if (senderIndex < 0) {
@@ -354,8 +353,8 @@ private:
         // Buscar balance del destinatario
         FindBalanceIndex_input recipientFindInput;
         recipientFindInput.account = input.to;
-        FindBalanceIndex_output recipientFindOutput;
-        state.FindBalanceIndex(recipientFindInput, recipientFindOutput);
+        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
+
         int recipientIndex = recipientFindOutput.index;
         
         if (recipientIndex >= 0) {
