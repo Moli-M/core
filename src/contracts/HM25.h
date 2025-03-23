@@ -119,6 +119,13 @@ private:
     uint64 numProposals;
 
     // --- Funciones auxiliares que usan state ---
+    struct FindBalanceIndex_input {
+        id account;
+    };
+    struct FindBalanceIndex_output {
+        int index;
+    };
+    
     PRIVATE_PROCEDURE(FindBalanceIndex)
         const id& account = input.account;
         for (int i = 0; i < (int)state.numHolders; i++) {
@@ -130,13 +137,12 @@ private:
         output.index = -1;
     _
 
-    struct FindBalanceIndex_input {
+    struct AddBalanceEntry_input {
         id account;
+        uint64 amount;
     };
-    struct FindBalanceIndex_output {
-        int index;
-    };
-
+    struct AddBalanceEntry_output {};
+    
     PRIVATE_PROCEDURE(AddBalanceEntry)
         const id& account = input.account;
         uint64 amount = input.amount;
@@ -149,12 +155,6 @@ private:
         }
         // Si se excede MAX_HOLDERS, se debería gestionar el error.
     _
-
-    struct AddBalanceEntry_input {
-        id account;
-        uint64 amount;
-    };
-    struct AddBalanceEntry_output {};
 
     // --- Funciones DAO internas ---
 
@@ -194,7 +194,11 @@ private:
                 return;
             }
         }
-        int idx = findBalanceIndex(qpi.invocator());
+        FindBalanceIndex_input findInput;
+        findInput.account = qpi.invocator();
+        FindBalanceIndex_output findOutput;
+        FindBalanceIndex(findInput, findOutput);
+        int idx = findOutput.index;
         uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -259,9 +263,17 @@ private:
         }
         for (int i = 0; i < 10; i++) {
             tempToken.symbol[i] = input.symbol[i];
-        }
+        FindBalanceIndex_input findInput;
+        findInput.account = qpi.invocator();
+        FindBalanceIndex_output findOutput;
+        FindBalanceIndex(findInput, findOutput);
+        int index = findOutput.index;
         tempToken.totalSupply = input.totalSupply;
-        state.token = tempToken;
+            AddBalanceEntry_input addInput;
+            addInput.account = qpi.invocator();
+            addInput.amount = input.totalSupply;
+            AddBalanceEntry_output addOutput;
+            AddBalanceEntry(addInput, addOutput);
 
         int index = findBalanceIndex(qpi.invocator());
         if (index >= 0) {
@@ -278,7 +290,11 @@ private:
             output.name[i] = state.token.name[i];
         }
         for (int i = 0; i < 10; i++) {
-            output.symbol[i] = state.token.symbol[i];
+        FindBalanceIndex_input findInput;
+        findInput.account = input.account;
+        FindBalanceIndex_output findOutput;
+        FindBalanceIndex(findInput, findOutput);
+        int index = findOutput.index;
         }
         output.totalSupply = state.token.totalSupply;
     _
@@ -286,7 +302,11 @@ private:
     PUBLIC_FUNCTION(GetStats)
         output.numberOfEchoCalls = state.numberOfEchoCalls;
         output.numberOfBurnCalls = state.numberOfBurnCalls;
-    _
+        FindBalanceIndex_input findInput;
+        findInput.account = sender;
+        FindBalanceIndex_output findOutput;
+        FindBalanceIndex(findInput, findOutput);
+        int senderIndex = findOutput.index;
 
     // Consulta el balance de una cuenta
     PUBLIC_FUNCTION(BalanceOf)
@@ -295,9 +315,17 @@ private:
             BalanceEntry entry = state.balances.get(index);
             output.balance = entry.balance;
         } else {
-            output.balance = 0;
+        FindBalanceIndex_input recipientFindInput;
+        recipientFindInput.account = input.to;
+        FindBalanceIndex_output recipientFindOutput;
+        FindBalanceIndex(recipientFindInput, recipientFindOutput);
+        int recipientIndex = recipientFindOutput.index;
         }
-    _
+            AddBalanceEntry_input addInput;
+            addInput.account = input.to;
+            addInput.amount = input.amount;
+            AddBalanceEntry_output addOutput;
+            AddBalanceEntry(addInput, addOutput);
 
     // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
