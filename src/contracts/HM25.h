@@ -263,6 +263,7 @@ private:
         }
         for (int i = 0; i < 10; i++) {
             tempToken.symbol[i] = input.symbol[i];
+        }
         FindBalanceIndex_input findInput;
         findInput.account = qpi.invocator();
         FindBalanceIndex_output findOutput;
