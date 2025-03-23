@@ -195,6 +195,9 @@ private:
                 return;
             }
         }
+        FindBalanceIndex_input findInput;
+        findInput.account = qpi.invocator();
+        state.FindBalanceIndex(findInput);
         int idx = findOutput.index;
         uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
@@ -262,6 +265,11 @@ private:
             state.token.symbol[i] = input.symbol[i];
         }
         state.token.totalSupply = input.totalSupply;
+        
+        // Buscar si el creador ya tiene un balance
+        FindBalanceIndex_input findInput;
+        findInput.account = qpi.invocator();
+        state.FindBalanceIndex(findInput);
 
         int index = findOutput.index;
         
@@ -296,6 +304,9 @@ private:
     _
 
     PUBLIC_FUNCTION(BalanceOf)
+        FindBalanceIndex_input findInput;
+        findInput.account = input.account;
+        state.FindBalanceIndex(findInput);
 
         int index = findOutput.index;
         
@@ -316,6 +327,11 @@ private:
     // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
         id sender = qpi.invocator();
+        
+        // Buscar balance del remitente
+        FindBalanceIndex_input senderFindInput;
+        senderFindInput.account = sender;
+        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
 
         int senderIndex = senderFindOutput.index;
         
@@ -333,6 +349,11 @@ private:
         // Restar del remitente
         senderEntry.balance -= input.amount;
         state.balances.set(senderIndex, senderEntry);
+
+        // Buscar balance del destinatario
+        FindBalanceIndex_input recipientFindInput;
+        recipientFindInput.account = input.to;
+        FindBalanceIndex_output findOutput = state.FindBalanceIndex(findInput);
 
         int recipientIndex = recipientFindOutput.index;
         
