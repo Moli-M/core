@@ -119,44 +119,6 @@ private:
     Array<Proposal, MAX_PROPOSALS> proposals;
     uint64 numProposals;
 
-    // --- Funciones auxiliares que usan state ---
-    struct FindBalanceIndex_input {
-        id account;
-    };
-    struct FindBalanceIndex_output {
-        int index;
-    };
-    
-    struct AddBalanceEntry_input {
-        id account;
-        uint64 amount;
-    };
-    struct AddBalanceEntry_output {};
-    
-    PRIVATE_PROCEDURE(FindBalanceIndex)
-        const id& account = input.account;
-        for (int i = 0; i < (int)state.numHolders; i++) {
-            if (state.balances.get(i).holder == account) {
-                output.index = i;
-                return;
-            }
-        }
-        output.index = -1;
-    _
-    
-    PRIVATE_PROCEDURE(AddBalanceEntry)
-        const id& account = input.account;
-        uint64 amount = input.amount;
-        if (state.numHolders < MAX_HOLDERS) {
-            BalanceEntry entry;
-            entry.holder = account;
-            entry.balance = amount;
-            state.balances.set(state.numHolders, entry);
-            state.numHolders++;
-        }
-        // Si se excede MAX_HOLDERS, se debería gestionar el error.
-    _
-
     // --- Funciones DAO internas ---
 
     // Crea una nueva propuesta
@@ -195,7 +157,17 @@ private:
                 return;
             }
         }
-        int idx = output.index;
+        
+        // Buscar balance del usuario (antes llamada a FindBalanceIndex)
+        const id& account = qpi.invocator();
+        int idx = -1;
+        for (int i = 0; i < (int)state.numHolders; i++) {
+            if (state.balances.get(i).holder == account) {
+                idx = i;
+                break;
+            }
+        }
+        
         uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
         if (weight == 0) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -262,8 +234,16 @@ private:
             state.token.symbol[i] = input.symbol[i];
         }
         state.token.totalSupply = input.totalSupply;
-
-        int index = output.index;
+        
+        // Buscar si el creador ya tiene un balance (antes FindBalanceIndex)
+        const id& account = qpi.invocator();
+        int index = -1;
+        for (int i = 0; i < (int)state.numHolders; i++) {
+            if (state.balances.get(i).holder == account) {
+                index = i;
+                break;
+            }
+        }
         
         if (index >= 0) {
             // Si ya existe, actualizar el balance
@@ -271,12 +251,15 @@ private:
             entry.balance = input.totalSupply;
             state.balances.set(index, entry);
         } else {
-            // Si no existe, crear nueva entrada
-            AddBalanceEntry_input addInput;
-            addInput.account = qpi.invocator();
-            addInput.amount = input.totalSupply;
-            AddBalanceEntry_output addOutput;
-            state.AddBalanceEntry(addInput);
+            // Si no existe, crear nueva entrada (antes AddBalanceEntry)
+            if (state.numHolders < MAX_HOLDERS) {
+                BalanceEntry entry;
+                entry.holder = account;
+                entry.balance = input.totalSupply;
+                state.balances.set(state.numHolders, entry);
+                state.numHolders++;
+            }
+            // Si se excede MAX_HOLDERS, se debería gestionar el error.
         }
     _
 
@@ -296,8 +279,15 @@ private:
     _
 
     PUBLIC_FUNCTION(BalanceOf)
-
-        int index = output.index;
+        // Buscar balance del usuario (antes FindBalanceIndex)
+        const id& account = input.account;
+        int index = -1;
+        for (int i = 0; i < (int)state.numHolders; i++) {
+            if (state.balances.get(i).holder == account) {
+                index = i;
+                break;
+            }
+        }
         
         if (index >= 0) {
             BalanceEntry entry = state.balances.get(index);
@@ -305,19 +295,20 @@ private:
         } else {
             output.balance = 0;
         }
-        qpi.transfer(sender, qpi.invocationReward());
-        return;
-    BalanceEntry senderEntry = state.balances.get(senderIndex);
-    if (senderEntry.balance < input.amount) {
-        qpi.transfer(sender, qpi.invocationReward());
-    }
     _
 
     // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
         id sender = qpi.invocator();
-
-        int senderIndex = senderFindOutput.index;
+        
+        // Buscar balance del remitente (antes FindBalanceIndex)
+        int senderIndex = -1;
+        for (int i = 0; i < (int)state.numHolders; i++) {
+            if (state.balances.get(i).holder == sender) {
+                senderIndex = i;
+                break;
+            }
+        }
         
         if (senderIndex < 0) {
             qpi.transfer(sender, qpi.invocationReward());
@@ -334,7 +325,14 @@ private:
         senderEntry.balance -= input.amount;
         state.balances.set(senderIndex, senderEntry);
 
-        int recipientIndex = recipientFindOutput.index;
+        // Buscar balance del destinatario (antes FindBalanceIndex)
+        int recipientIndex = -1;
+        for (int i = 0; i < (int)state.numHolders; i++) {
+            if (state.balances.get(i).holder == input.to) {
+                recipientIndex = i;
+                break;
+            }
+        }
         
         if (recipientIndex >= 0) {
             // Si ya existe, sumar al balance
@@ -342,44 +340,43 @@ private:
             recipientEntry.balance += input.amount;
             state.balances.set(recipientIndex, recipientEntry);
         } else {
-            // Si no existe, crear nueva entrada
-            AddBalanceEntry_input addInput;
-            addInput.account = input.to;
-            addInput.amount = input.amount;
-            AddBalanceEntry_output addOutput;
-            state.AddBalanceEntry(addInput);
+            // Si no existe, crear nueva entrada (antes AddBalanceEntry)
+            if (state.numHolders < MAX_HOLDERS) {
+                BalanceEntry entry;
+                entry.holder = input.to;
+                entry.balance = input.amount;
+                state.balances.set(state.numHolders, entry);
+                state.numHolders++;
+            }
+            // Si se excede MAX_HOLDERS, se debería gestionar el error.
         }
     _
 
-	REGISTER_USER_FUNCTIONS_AND_PROCEDURES
+    REGISTER_USER_FUNCTIONS_AND_PROCEDURES
         REGISTER_USER_FUNCTION(GetToken, 1);
         REGISTER_USER_FUNCTION(GetStats, 2);
         REGISTER_USER_FUNCTION(BalanceOf, 3);
-        REGISTER_USER_FUNCTION(Transfer, 4);
-
-        REGISTER_USER_PROCEDURE(FindBalanceIndex, 1);
-        REGISTER_USER_PROCEDURE(AddBalanceEntry, 2);
+        
         REGISTER_USER_PROCEDURE(CreateProposal, 3);
         REGISTER_USER_PROCEDURE(VoteProposal, 4);
         REGISTER_USER_PROCEDURE(ExecuteProposal, 5);
         REGISTER_USER_PROCEDURE(Echo, 6);
         REGISTER_USER_PROCEDURE(Burn, 7);
         REGISTER_USER_PROCEDURE(SetToken, 8);
+        REGISTER_USER_PROCEDURE(Transfer, 9);
     _
 
-    INITIALIZE
-        output.index = 10;
-
-        state.numberOfEchoCalls = 0;
-        state.numberOfBurnCalls = 0;
-        state.token.totalSupply = 25;
-        for (int i = 0; i < 20; i++) {
-            state.token.name[i] = 0;
-        }
-        for (int i = 0; i < 10; i++) {
-            state.token.symbol[i] = 0;
-        }
-        state.numHolders = 0;
-        state.numProposals = 0;
-    _
+    // INITIALIZE
+    //     state.numberOfEchoCalls = 0;
+    //     state.numberOfBurnCalls = 0;
+    //     state.token.totalSupply = 25;
+    //     for (int i = 0; i < 20; i++) {
+    //         state.token.name[i] = 0;
+    //     }
+    //     for (int i = 0; i < 10; i++) {
+    //         state.token.symbol[i] = 0;
+    //     }
+    //     state.numHolders = 0;
+    //     state.numProposals = 0;
+    // _
 };
