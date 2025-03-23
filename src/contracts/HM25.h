@@ -118,11 +118,11 @@ private:
     Array<Proposal, MAX_PROPOSALS> proposals;
     uint64 numProposals;
 
-    // --- Funciones auxiliares que usan state ---
+    // --- Funciones auxiliares (sin usar "state." ya que son miembros) ---
     int findBalanceIndex(const id &account)
     {
-        for (int i = 0; i < (int)state.numHolders; i++) {
-            if (state.balances.get(i).holder == account) {
+        for (int i = 0; i < (int)numHolders; i++) {
+            if (balances.get(i).holder == account) {
                 return i;
             }
         }
@@ -131,12 +131,12 @@ private:
 
     void addBalanceEntry(const id &account, uint64 amount)
     {
-        if (state.numHolders < MAX_HOLDERS) {
+        if (numHolders < MAX_HOLDERS) {
             BalanceEntry entry;
             entry.holder = account;
             entry.balance = amount;
-            state.balances.set(state.numHolders, entry);
-            state.numHolders++;
+            balances.set(numHolders, entry);
+            numHolders++;
         }
         // Si se excede MAX_HOLDERS, se debería gestionar el error.
     }
@@ -145,12 +145,12 @@ private:
 
     // Crea una nueva propuesta
     PUBLIC_PROCEDURE(CreateProposal)
-        if (state.numProposals >= MAX_PROPOSALS) {
+        if (numProposals >= MAX_PROPOSALS) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
         Proposal newProp;
-        newProp.proposalId = state.numProposals;
+        newProp.proposalId = numProposals;
         for (int i = 0; i < 64; i++) {
             newProp.description[i] = input.description[i];
         }
@@ -158,17 +158,17 @@ private:
         newProp.votesAgainst = 0;
         newProp.executed = false;
         newProp.numVotes = 0;
-        state.proposals.set(state.numProposals, newProp);
-        state.numProposals++;
+        proposals.set(numProposals, newProp);
+        numProposals++;
     _
 
     // Vota sobre una propuesta
     PUBLIC_PROCEDURE(VoteProposal)
-        if (input.proposalId >= state.numProposals) {
+        if (input.proposalId >= numProposals) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
-        Proposal prop = state.proposals.get(input.proposalId);
+        Proposal prop = proposals.get(input.proposalId);
         if (prop.executed) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
@@ -180,7 +180,7 @@ private:
             }
         }
         int idx = findBalanceIndex(qpi.invocator());
-        uint64 weight = (idx >= 0) ? state.balances.get(idx).balance : 0;
+        uint64 weight = (idx >= 0) ? balances.get(idx).balance : 0;
         if (weight == 0) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
@@ -198,16 +198,16 @@ private:
         } else {
             prop.votesAgainst += weight;
         }
-        state.proposals.set(input.proposalId, prop);
+        proposals.set(input.proposalId, prop);
     _
 
     // Ejecuta una propuesta
     PUBLIC_PROCEDURE(ExecuteProposal)
-        if (input.proposalId >= state.numProposals) {
+        if (input.proposalId >= numProposals) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
         }
-        Proposal prop = state.proposals.get(input.proposalId);
+        Proposal prop = proposals.get(input.proposalId);
         if (prop.executed) {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
             return;
@@ -215,13 +215,13 @@ private:
         if (prop.votesFor > prop.votesAgainst) {
             prop.executed = true;
         }
-        state.proposals.set(input.proposalId, prop);
+        proposals.set(input.proposalId, prop);
     _
 
     // --- Funciones ERC20 y estadísticas ---
 
     PUBLIC_PROCEDURE(Echo)
-        state.numberOfEchoCalls++;
+        numberOfEchoCalls++;
         if (qpi.invocationReward() > 0)
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -229,7 +229,7 @@ private:
     _
 
     PUBLIC_PROCEDURE(Burn)
-        state.numberOfBurnCalls++;
+        numberOfBurnCalls++;
         if (qpi.invocationReward() > 0)
         {
             qpi.burn(qpi.invocationReward());
@@ -246,13 +246,13 @@ private:
             tempToken.symbol[i] = input.symbol[i];
         }
         tempToken.totalSupply = input.totalSupply;
-        state.token = tempToken;
+        token = tempToken;
 
         int index = findBalanceIndex(qpi.invocator());
         if (index >= 0) {
-            BalanceEntry entry = state.balances.get(index);
+            BalanceEntry entry = balances.get(index);
             entry.balance = input.totalSupply;
-            state.balances.set(index, entry);
+            balances.set(index, entry);
         } else {
             addBalanceEntry(qpi.invocator(), input.totalSupply);
         }
@@ -260,24 +260,24 @@ private:
 
     PUBLIC_FUNCTION(GetToken)
         for (int i = 0; i < 20; i++) {
-            output.name[i] = state.token.name[i];
+            output.name[i] = token.name[i];
         }
         for (int i = 0; i < 10; i++) {
-            output.symbol[i] = state.token.symbol[i];
+            output.symbol[i] = token.symbol[i];
         }
-        output.totalSupply = state.token.totalSupply;
+        output.totalSupply = token.totalSupply;
     _
 
     PUBLIC_FUNCTION(GetStats)
-        output.numberOfEchoCalls = state.numberOfEchoCalls;
-        output.numberOfBurnCalls = state.numberOfBurnCalls;
+        output.numberOfEchoCalls = numberOfEchoCalls;
+        output.numberOfBurnCalls = numberOfBurnCalls;
     _
 
     // Consulta el balance de una cuenta
     PUBLIC_FUNCTION(BalanceOf)
         int index = findBalanceIndex(input.account);
         if (index >= 0) {
-            BalanceEntry entry = state.balances.get(index);
+            BalanceEntry entry = balances.get(index);
             output.balance = entry.balance;
         } else {
             output.balance = 0;
@@ -292,19 +292,19 @@ private:
             qpi.transfer(sender, qpi.invocationReward());
             return;
         }
-        BalanceEntry senderEntry = state.balances.get(senderIndex);
+        BalanceEntry senderEntry = balances.get(senderIndex);
         if (senderEntry.balance < input.amount) {
             qpi.transfer(sender, qpi.invocationReward());
             return;
         }
         senderEntry.balance -= input.amount;
-        state.balances.set(senderIndex, senderEntry);
+        balances.set(senderIndex, senderEntry);
 
         int recipientIndex = findBalanceIndex(input.to);
         if (recipientIndex >= 0) {
-            BalanceEntry recipientEntry = state.balances.get(recipientIndex);
+            BalanceEntry recipientEntry = balances.get(recipientIndex);
             recipientEntry.balance += input.amount;
-            state.balances.set(recipientIndex, recipientEntry);
+            balances.set(recipientIndex, recipientEntry);
         } else {
             addBalanceEntry(input.to, input.amount);
         }
@@ -328,16 +328,16 @@ private:
     _
 
     INITIALIZE
-        state.numberOfEchoCalls = 0;
-        state.numberOfBurnCalls = 0;
-        state.token.totalSupply = 25;
+        numberOfEchoCalls = 0;
+        numberOfBurnCalls = 0;
+        token.totalSupply = 25;
         for (int i = 0; i < 20; i++) {
-            state.token.name[i] = 0;
+            token.name[i] = 0;
         }
         for (int i = 0; i < 10; i++) {
-            state.token.symbol[i] = 0;
+            token.symbol[i] = 0;
         }
-        state.numHolders = 0;
-        state.numProposals = 0;
+        numHolders = 0;
+        numProposals = 0;
     _
 };
