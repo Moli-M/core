@@ -308,6 +308,7 @@ private:
         FindBalanceIndex_output findOutput;
         FindBalanceIndex(findInput, findOutput);
         int senderIndex = findOutput.index;
+    _
 
     // Consulta el balance de una cuenta
     PUBLIC_FUNCTION(BalanceOf)
@@ -327,6 +328,7 @@ private:
             addInput.amount = input.amount;
             AddBalanceEntry_output addOutput;
             AddBalanceEntry(addInput, addOutput);
+    _
 
     // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
