@@ -294,23 +294,13 @@ private:
             output.symbol[i] = state.token.symbol[i];
         }
         output.totalSupply = state.token.totalSupply;
-        }
-        output.totalSupply = state.token.totalSupply;
     _
 
     PUBLIC_FUNCTION(GetStats)
         output.numberOfEchoCalls = state.numberOfEchoCalls;
-    PUBLIC_FUNCTION(GetStats)
-        output.numberOfEchoCalls = state.numberOfEchoCalls;
         output.numberOfBurnCalls = state.numberOfBurnCalls;
-    // Consulta el balance de una cuenta
-    PUBLIC_FUNCTION(BalanceOf)
-        int index = findBalanceIndex(input.account);
-        if (index >= 0) {
-            BalanceEntry entry = state.balances.get(index);
-            output.balance = entry.balance;
-        } else {
-    // Consulta el balance de una cuenta
+    _
+            // Consulta el balance de una cuenta
     PUBLIC_FUNCTION(BalanceOf)
         FindBalanceIndex_input findInput;
         findInput.account = input.account;
@@ -326,10 +316,11 @@ private:
         }
             qpi.transfer(sender, qpi.invocationReward());
             return;
-        }
         BalanceEntry senderEntry = state.balances.get(senderIndex);
         if (senderEntry.balance < input.amount) {
             qpi.transfer(sender, qpi.invocationReward());
+        }
+        _
     // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
         id sender = qpi.invocator();
