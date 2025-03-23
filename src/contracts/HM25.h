@@ -1,5 +1,9 @@
 using namespace QPI;
 
+struct HM252
+{
+};
+
 
 struct HM25 : public ContractBase
 {
@@ -369,7 +373,6 @@ private:
     _
 
     REGISTER_CONTRACT_FUNCTIONS_AND_PROCEDURES
-    // --- Funciones auxiliares que usan state ---
         REGISTER_USER_PROCEDURE(FindBalanceIndex, 1);
         REGISTER_USER_PROCEDURE(AddBalanceEntry, 2);
         REGISTER_USER_PROCEDURE(CreateProposal, 3);
