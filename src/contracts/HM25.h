@@ -276,7 +276,7 @@ private:
             addInput.account = qpi.invocator();
             addInput.amount = input.totalSupply;
             AddBalanceEntry_output addOutput;
-            state.AddBalanceEntry(addInput, addOutput);
+            state.AddBalanceEntry(addInput);
         }
     _
 
@@ -347,7 +347,7 @@ private:
             addInput.account = input.to;
             addInput.amount = input.amount;
             AddBalanceEntry_output addOutput;
-            state.AddBalanceEntry(addInput, addOutput);
+            state.AddBalanceEntry(addInput);
         }
     _
 
