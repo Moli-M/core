@@ -303,7 +303,7 @@ private:
         output.numberOfEchoCalls = state.numberOfEchoCalls;
         output.numberOfBurnCalls = state.numberOfBurnCalls;
     _
-            // Consulta el balance de una cuenta
+
     PUBLIC_FUNCTION(BalanceOf)
         FindBalanceIndex_input findInput;
         findInput.account = input.account;
@@ -317,13 +317,14 @@ private:
         } else {
             output.balance = 0;
         }
-            qpi.transfer(sender, qpi.invocationReward());
-            return;
-        BalanceEntry senderEntry = state.balances.get(senderIndex);
-        if (senderEntry.balance < input.amount) {
-            qpi.transfer(sender, qpi.invocationReward());
-        }
+        qpi.transfer(sender, qpi.invocationReward());
+        return;
+    BalanceEntry senderEntry = state.balances.get(senderIndex);
+    if (senderEntry.balance < input.amount) {
+        qpi.transfer(sender, qpi.invocationReward());
+    }
     _
+
     // Realiza una transferencia de tokens
     PUBLIC_PROCEDURE(Transfer)
         id sender = qpi.invocator();
