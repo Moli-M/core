@@ -1,8 +1,5 @@
 using namespace QPI;
 
-struct HM252
-{
-};
 
 struct HM25 : public ContractBase
 {
