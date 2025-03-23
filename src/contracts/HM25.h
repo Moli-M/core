@@ -370,20 +370,20 @@ private:
 
     REGISTER_CONTRACT_FUNCTIONS_AND_PROCEDURES
     // --- Funciones auxiliares que usan state ---
-        PRIVATE_PROCEDURE(FindBalanceIndex, 1);
-        PRIVATE_PROCEDURE(AddBalanceEntry, 2);
-        PUBLIC_PROCEDURE(CreateProposal, 3);
-        PUBLIC_PROCEDURE(VoteProposal, 4);
-        PUBLIC_PROCEDURE(ExecuteProposal, 5);
-        PUBLIC_PROCEDURE(Echo, 6);
-        PUBLIC_PROCEDURE(Burn, 7);
-        PUBLIC_PROCEDURE(SetToken, 8);
+        REGISTER_USER_PROCEDURE(FindBalanceIndex, 1);
+        REGISTER_USER_PROCEDURE(AddBalanceEntry, 2);
+        REGISTER_USER_PROCEDURE(CreateProposal, 3);
+        REGISTER_USER_PROCEDURE(VoteProposal, 4);
+        REGISTER_USER_PROCEDURE(ExecuteProposal, 5);
+        REGISTER_USER_PROCEDURE(Echo, 6);
+        REGISTER_USER_PROCEDURE(Burn, 7);
+        REGISTER_USER_PROCEDURE(SetToken, 8);
 
 
-        PUBLIC_FUNCTION(GetToken, 1);
-        PUBLIC_FUNCTION(GetStats, 2);
-        PUBLIC_FUNCTION(BalanceOf, 3);
-        PUBLIC_PROCEDURE(Transfer, 4);
+        REGISTER_USER_FUNCTION(GetToken, 1);
+        REGISTER_USER_FUNCTION(GetStats, 2);
+        REGISTER_USER_FUNCTION(BalanceOf, 3);
+        REGISTER_USER_FUNCTION(Transfer, 4);
     _
 
     INITIALIZE
