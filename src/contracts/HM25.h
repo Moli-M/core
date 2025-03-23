@@ -374,6 +374,11 @@ private:
     _
 
     REGISTER_CONTRACT_FUNCTIONS_AND_PROCEDURES
+        REGISTER_USER_FUNCTION(GetToken, 1);
+        REGISTER_USER_FUNCTION(GetStats, 2);
+        REGISTER_USER_FUNCTION(BalanceOf, 3);
+        REGISTER_USER_FUNCTION(Transfer, 4);
+
         REGISTER_USER_PROCEDURE(FindBalanceIndex, 1);
         REGISTER_USER_PROCEDURE(AddBalanceEntry, 2);
         REGISTER_USER_PROCEDURE(CreateProposal, 3);
@@ -382,12 +387,6 @@ private:
         REGISTER_USER_PROCEDURE(Echo, 6);
         REGISTER_USER_PROCEDURE(Burn, 7);
         REGISTER_USER_PROCEDURE(SetToken, 8);
-
-
-        REGISTER_USER_FUNCTION(GetToken, 1);
-        REGISTER_USER_FUNCTION(GetStats, 2);
-        REGISTER_USER_FUNCTION(BalanceOf, 3);
-        REGISTER_USER_FUNCTION(Transfer, 4);
     _
 
     INITIALIZE
