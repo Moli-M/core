@@ -9,6 +9,11 @@ struct HM25 : public ContractBase
 {
 public:
     // --- Funciones básicas (ERC20 y estadísticas) ---
+    struct Echo_input {};
+    struct Echo_output {};
+
+    struct Burn_input {};
+    struct Burn_output {};
 
     struct SetToken_input
     {
@@ -24,6 +29,13 @@ public:
         char name[20];
         char symbol[10];
         uint64 totalSupply;
+    };
+
+    struct GetStats_input {};
+    struct GetStats_output
+    {
+        uint64 numberOfEchoCalls;
+        uint64 numberOfBurnCalls;
     };
 
     // ERC20: BalanceOf
@@ -65,6 +77,9 @@ public:
     struct ExecuteProposal_output {};
 
 private:
+    // Variables de estadísticas
+    uint64 numberOfEchoCalls;
+    uint64 numberOfBurnCalls;
 
     // Datos del token (nombre, símbolo y totalSupply)
     struct Token {
@@ -193,6 +208,22 @@ private:
 
     // --- Funciones ERC20 y estadísticas ---
 
+    PUBLIC_PROCEDURE(Echo)
+        state.numberOfEchoCalls++;
+        if (qpi.invocationReward() > 0)
+        {
+            qpi.transfer(qpi.invocator(), qpi.invocationReward());
+        }
+    _
+
+    PUBLIC_PROCEDURE(Burn)
+        state.numberOfBurnCalls++;
+        if (qpi.invocationReward() > 0)
+        {
+            qpi.burn(qpi.invocationReward());
+        }
+    _
+
     // Establece el token y asigna el totalSupply al creador
     PUBLIC_PROCEDURE(SetToken)
         // Copiar datos del token
@@ -242,6 +273,10 @@ private:
         output.totalSupply = state.token.totalSupply;
     _
 
+    PUBLIC_FUNCTION(GetStats)
+        output.numberOfEchoCalls = state.numberOfEchoCalls;
+        output.numberOfBurnCalls = state.numberOfBurnCalls;
+    _
 
     PUBLIC_FUNCTION(BalanceOf)
         // Buscar balance del usuario (antes FindBalanceIndex)
@@ -319,16 +354,21 @@ private:
 
     REGISTER_USER_FUNCTIONS_AND_PROCEDURES
         REGISTER_USER_FUNCTION(GetToken, 1);
-        REGISTER_USER_FUNCTION(BalanceOf, 2);
+        REGISTER_USER_FUNCTION(GetStats, 2);
+        REGISTER_USER_FUNCTION(BalanceOf, 3);
         
-        REGISTER_USER_PROCEDURE(CreateProposal, 1);
-        REGISTER_USER_PROCEDURE(VoteProposal, 2);
-        REGISTER_USER_PROCEDURE(ExecuteProposal, 3);
-        REGISTER_USER_PROCEDURE(SetToken, 4);
-        REGISTER_USER_PROCEDURE(Transfer, 5);
+        REGISTER_USER_PROCEDURE(CreateProposal, 3);
+        REGISTER_USER_PROCEDURE(VoteProposal, 4);
+        REGISTER_USER_PROCEDURE(ExecuteProposal, 5);
+        REGISTER_USER_PROCEDURE(Echo, 6);
+        REGISTER_USER_PROCEDURE(Burn, 7);
+        REGISTER_USER_PROCEDURE(SetToken, 8);
+        REGISTER_USER_PROCEDURE(Transfer, 9);
     _
 
     // INITIALIZE
+    //     state.numberOfEchoCalls = 0;
+    //     state.numberOfBurnCalls = 0;
     //     state.token.totalSupply = 25;
     //     for (int i = 0; i < 20; i++) {
     //         state.token.name[i] = 0;
